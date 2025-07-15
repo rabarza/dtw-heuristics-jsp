@@ -10,7 +10,7 @@ def plot_schedule(schedule_df: pd.DataFrame, H_daily_hours: int = 8, figsize=(20
     Parameters
     ----------
     schedule_df : pd.DataFrame
-        Debe contener columnas: job_id, operation_id, machine_id, start_time_hours, end_time_hours, duration_hours
+        Debe contener columnas: job_id, operation_index, machine_id, start_time_hours, end_time_hours, duration_hours
     H_daily_hours : int
         Número de horas por jornada laboral.
     figsize : tuple
@@ -35,7 +35,7 @@ def plot_schedule(schedule_df: pd.DataFrame, H_daily_hours: int = 8, figsize=(20
         end_day = int(row["end_time_hours"] // H_daily_hours)
         if start_day != end_day:
             print(
-                f"⚠️ Advertencia: Job {row['job_id']} operación {row['operation_id']} cruza días ({row['start_time_hours']}h → {row['end_time_hours']}h)."
+                f"⚠️ Advertencia: Job {row['job_id']} operación {row['operation_index']} cruza días ({row['start_time_hours']}h → {row['end_time_hours']}h)."
             )
 
     # Graficar cada job
@@ -51,7 +51,7 @@ def plot_schedule(schedule_df: pd.DataFrame, H_daily_hours: int = 8, figsize=(20
             ax.text(
                 row["start_time_hours"] + row["duration_hours"] / 2,
                 y,
-                int(row["operation_id"]),
+                int(row["operation_index"]),
                 va="center",
                 ha="center",
                 fontsize=8,

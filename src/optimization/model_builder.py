@@ -18,7 +18,7 @@ def solve_jobshop(
     # Crear estructura de datos para el modelo
     jobs_data = {}
     for job_id, job_df in df.groupby("job_id"):
-        job_df = job_df.sort_values("operation_id")
+        job_df = job_df.sort_values("operation_index")
         jobs_data[job_id] = [
             (int(row["machine_id"]), int(row["processing_time_scaled"]))
             for _, row in job_df.iterrows()
@@ -84,7 +84,7 @@ def solve_jobshop(
                 results.append(
                     {
                         "job_id": job_id,
-                        "operation_id": task_id,
+                        "operation_index": task_id,
                         "machine_id": machine,
                         "start_time_hours": round(start_h, 2),
                         "end_time_hours": round(end_h, 2),
@@ -93,4 +93,5 @@ def solve_jobshop(
                 )
     else:
         print("❌ No se encontró solución factible.")
+        return pd.DataFrame()
     return pd.DataFrame(results)
