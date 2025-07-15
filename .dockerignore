@@ -1,0 +1,34 @@
+# Ignorar entornos virtuales
+venv/
+.env/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar notebooks
+notebooks/
+*.ipynb
+
+# Ignorar datos pesados
+data/raw/
+data/processed/
+*.csv
+*.xlsx
+*.json
+
+# Ignorar archivos de configuración de IDE
+.idea/
+.vscode/
+
+# Ignorar control de versiones
+.git
+.gitignore
+
+# Ignorar archivos temporales
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
