@@ -93,6 +93,7 @@ def solve_jobshop_two_stage(
     max_time_stage2: int = 60,
 ):
     from src.utils.helpers import build_schedule_results
+
     df = df.copy()
     df["processing_time_scaled"] = (
         (df["processing_time"] * time_scale).round().astype(int)
@@ -121,7 +122,9 @@ def solve_jobshop_two_stage(
                 suffix = f"_{job_id}_{task_id}"
                 start_var = model.NewIntVar(0, horizon, "start" + suffix)
                 end_var = model.NewIntVar(0, horizon, "end" + suffix)
-                interval = model.NewIntervalVar(start_var, duration, end_var, "interval" + suffix)
+                interval = model.NewIntervalVar(
+                    start_var, duration, end_var, "interval" + suffix
+                )
                 all_tasks[(job_id, task_id)] = (start_var, end_var, interval, machine)
 
                 # Precedencia
@@ -174,4 +177,139 @@ def solve_jobshop_two_stage(
         print("❌ No se encontró solución factible en la etapa 2.")
         return
     results = build_schedule_results(jobs_data, all_tasks2, solver2, time_scale)
+    return pd.DataFrame(results)
+
+
+def solve_jobshop_with_setups(
+    df: pd.DataFrame,
+    time_scale: int = 60,
+    H_daily_hours: int = 10,
+    enforce_daily_limit: bool = True,
+    max_time: int = 100,
+):
+    """
+    Resuelve un JobShop Scheduling considerando tiempos de setup por operación.
+
+    Parámetros:
+    -----------
+    df: pd.DataFrame
+        Debe contener columnas:
+        - job_id
+        - operation_index
+        - machine_id
+        - processing_time
+        - setup_time
+    time_scale: int
+        Factor de escalamiento (ej: 60 para pasar horas a minutos enteros).
+    H_daily_hours: int
+        Duración máxima de la jornada diaria en horas.
+    enforce_daily_limit: bool
+        Si True, aplica las restricciones de jornada diaria.
+    max_time: int
+        Tiempo máximo en segundos para resolver el modelo.
+    """
+    # -------------------------------
+    # Preprocesar datos
+    # -------------------------------
+    df = df.copy()
+    df["processing_time_scaled"] = (
+        (df["processing_time"] * time_scale).round().astype(int)
+    )
+    df["setup_time_scaled"] = (df["setup_time"] * time_scale).round().astype(int)
+
+    # Construir datos por trabajo
+    jobs_data = {}
+    for job_id, job_df in df.groupby("job_id"):
+        job_df = job_df.sort_values("operation_index")
+        jobs_data[job_id] = [
+            (
+                int(row["machine_id"]),
+                int(row["processing_time_scaled"]),
+                int(row["setup_time_scaled"]),
+            )
+            for _, row in job_df.iterrows()
+        ]
+
+    # Horizonte temporal
+    horizon = int((df["processing_time_scaled"] + df["setup_time_scaled"]).sum() * 2)
+
+    # -------------------------------
+    # Crear modelo CP-SAT
+    # -------------------------------
+    model = cp_model.CpModel()
+    all_tasks = {}
+    job_ends = {}
+
+    for job_id, operations in jobs_data.items():
+        previous_end = None
+        for task_id, (machine, duration, setup) in enumerate(operations):
+            total_duration = duration + setup
+            suffix = f"_{job_id}_{task_id}"
+            start_var = model.NewIntVar(0, horizon, "start" + suffix)
+            end_var = model.NewIntVar(0, horizon, "end" + suffix)
+            interval = model.NewIntervalVar(
+                start_var, total_duration, end_var, "interval" + suffix
+            )
+            all_tasks[(job_id, task_id)] = (start_var, end_var, interval, machine)
+
+            # Precedencia dentro del job
+            if previous_end is not None:
+                model.Add(start_var >= previous_end)
+            previous_end = end_var
+        job_ends[job_id] = previous_end
+
+    # No solapamiento por máquina
+    machine_to_intervals = {}
+    for (job_id, task_id), (_, _, interval, machine) in all_tasks.items():
+        machine_to_intervals.setdefault(machine, []).append(interval)
+    for machine, intervals in machine_to_intervals.items():
+        model.AddNoOverlap(intervals)
+
+    # Restricciones de jornada diaria (opcional)
+    if enforce_daily_limit:
+        H_daily = int(H_daily_hours * time_scale)
+        for (job_id, task_id), (start_var, end_var, _, _) in all_tasks.items():
+            day_start = model.NewIntVar(0, 1000, f"day_start_{job_id}_{task_id}")
+            day_end = model.NewIntVar(0, 1000, f"day_end_{job_id}_{task_id}")
+            model.AddDivisionEquality(day_start, start_var, H_daily)
+            model.AddDivisionEquality(day_end, end_var, H_daily)
+            model.Add(day_start == day_end)
+
+    # Objetivo: minimizar makespan
+    makespan = model.NewIntVar(0, horizon, "makespan")
+    model.AddMaxEquality(makespan, list(job_ends.values()))
+    model.Minimize(makespan)
+
+    # Resolver
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = max_time
+    status = solver.Solve(model)
+
+    # Construir resultado
+    results = []
+    if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
+        for job_id, operations in jobs_data.items():
+            for task_id, (machine, duration, setup) in enumerate(operations):
+                start_var, end_var, _, _ = all_tasks[(job_id, task_id)]
+                start_h = solver.Value(start_var) / time_scale
+                end_h = solver.Value(end_var) / time_scale
+                setup_h = setup / time_scale
+                process_h = duration / time_scale
+                results.append(
+                    {
+                        "job_id": job_id,
+                        "operation_index": task_id,
+                        "machine_id": machine,
+                        "start_time_hours": round(start_h, 2),
+                        "end_time_hours": round(end_h, 2),
+                        "duration_hours": round(end_h - start_h, 2),
+                        "setup_time_hours": round(setup_h, 2),
+                        "processing_time_hours": round(process_h, 2),
+                    }
+                )
+
+    else:
+        print("❌ No se encontró solución factible.")
+        return pd.DataFrame()
+
     return pd.DataFrame(results)
