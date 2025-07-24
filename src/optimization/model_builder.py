@@ -7,12 +7,12 @@ import warnings
 def preprocess_jobshop_df(df, time_scale, use_setup_times):
     df = df.copy()
     df["processing_time_scaled"] = (
-        (df["processing_time"] * time_scale).round().astype(int)
+        (df["processing_time"] * time_scale).round().astype(int).fillna(0)
     )
     if use_setup_times:
         if "setup_time" in df.columns:
             df["setup_time_scaled"] = (
-                (df["setup_time"] * time_scale).round().astype(int)
+                (df["setup_time"] * time_scale).round().astype(int).fillna(0)
             )
         else:
             warnings.warn(
@@ -31,7 +31,7 @@ def build_jobs_data(df, use_setup_times):
                 (
                     int(row["machine_id"]),
                     int(row["processing_time_scaled"]),
-                    int(row["setup_time_scaled"]),
+                    int(row["setup_time_scaled"] if not pd.isna(row["setup_time_scaled"]) else 0),
                 )
                 for _, row in job_df.iterrows()
             ]
