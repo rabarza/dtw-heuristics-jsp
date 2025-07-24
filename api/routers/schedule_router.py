@@ -40,20 +40,19 @@ def _build_output(schedule_df_human):
 def solve_schedule(req: SolveRequest):
     data = [t.model_dump() for t in req.tasks]
     df = pd.DataFrame(data)
-
-    # Ejecutar optimización
+    # Determinar el tiempo máximo a usar
+    max_time = req.max_time_stage1 if req.max_time_stage1 is not None else req.max_time
     schedule_df = solve_jobshop(
         df,
         time_scale=req.time_scale,
         H_daily_hours=req.H_daily_hours,
         enforce_daily_limit=req.enforce_daily_limit,
         use_setup_times=req.use_setup_times,
-        max_time=req.max_time,
+        max_time=max_time,
+        fixed_starts=req.fixed_starts,
     )
     if schedule_df.empty:
         return SolveResponse(status="infeasible", makespan=0.0, schedule=[])
-
-    # Agregar columnas legibles
     schedule_df_human = add_day_hour_columns(
         schedule_df, H_daily_hours=req.H_daily_hours
     )
@@ -75,8 +74,9 @@ def solve_schedule_two_stage(req: SolveRequest):
         H_daily_hours=req.H_daily_hours,
         enforce_daily_limit=req.enforce_daily_limit,
         use_setup_times=req.use_setup_times,
-        max_time_stage1=req.max_time_stage1 or 60,
+        max_time_stage1=req.max_time_stage1 or req.max_time,
         max_time_stage2=req.max_time_stage2 or 60,
+        fixed_starts=req.fixed_starts,
     )
     if schedule_df is None or schedule_df.empty:
         return SolveResponse(status="infeasible", makespan=0.0, schedule=[])

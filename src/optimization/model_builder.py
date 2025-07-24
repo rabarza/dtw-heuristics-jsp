@@ -51,6 +51,7 @@ def create_cp_variables_and_constraints(
     H_daily_hours,
     time_scale,
     use_setup_times,
+    start_time_fixed_map=None,
 ):
     all_tasks = {}
     job_ends = {}
@@ -70,6 +71,11 @@ def create_cp_variables_and_constraints(
                 start_var, total_duration, end_var, "interval" + suffix
             )
             all_tasks[(job_id, task_id)] = (start_var, end_var, interval, machine)
+            # Restricción de inicio fijo si corresponde
+            if start_time_fixed_map is not None:
+                key = (job_id, task_id)
+                if key in start_time_fixed_map and start_time_fixed_map[key] is not None:
+                    model.Add(start_var == int(start_time_fixed_map[key] * time_scale))
             if previous_end is not None:
                 model.Add(start_var >= previous_end)
             previous_end = end_var
@@ -133,6 +139,18 @@ def build_jobshop_results(jobs_data, all_tasks, solver, time_scale, use_setup_ti
     return results
 
 
+def build_start_time_fixed_map(fixed_starts):
+    if not fixed_starts:
+        return None
+    start_time_fixed_map = {}
+    for job_id, lst in fixed_starts.items():
+        for item in lst:
+            key = (int(job_id), int(item['operation_index']) if isinstance(item, dict) else item.operation_index)
+            val = item['start_time_fixed'] if isinstance(item, dict) else item.start_time_fixed
+            start_time_fixed_map[key] = val
+    return start_time_fixed_map
+
+
 def solve_jobshop(
     df: pd.DataFrame,
     time_scale: int = 60,
@@ -140,12 +158,14 @@ def solve_jobshop(
     enforce_daily_limit: bool = True,
     use_setup_times: bool = False,
     max_time: int = 100,
+    fixed_starts: dict = None,
 ):
     """
     Resuelve un Job Shop Scheduling, con opción de considerar tiempos de setup.
     """
     df, use_setup_times = preprocess_jobshop_df(df, time_scale, use_setup_times)
     jobs_data = build_jobs_data(df, use_setup_times)
+    start_time_fixed_map = build_start_time_fixed_map(fixed_starts)
     if use_setup_times:
         horizon = int(
             (df["processing_time_scaled"] + df["setup_time_scaled"]).sum() * 2
@@ -161,6 +181,7 @@ def solve_jobshop(
         H_daily_hours,
         time_scale,
         use_setup_times,
+        start_time_fixed_map,
     )
     makespan = model.NewIntVar(0, horizon, "makespan")
     model.AddMaxEquality(makespan, list(job_ends.values()))
@@ -184,9 +205,11 @@ def solve_jobshop_two_stage(
     use_setup_times: bool = False,
     max_time_stage1: int = 60,
     max_time_stage2: int = 60,
+    fixed_starts: dict = None,
 ):
     df, use_setup_times = preprocess_jobshop_df(df, time_scale, use_setup_times)
     jobs_data = build_jobs_data(df, use_setup_times)
+    start_time_fixed_map = build_start_time_fixed_map(fixed_starts)
     if use_setup_times:
         horizon = int(
             (df["processing_time_scaled"] + df["setup_time_scaled"]).sum() * 2
@@ -203,6 +226,7 @@ def solve_jobshop_two_stage(
             H_daily_hours,
             time_scale,
             use_setup_times,
+            start_time_fixed_map,
         )
         makespan = model.NewIntVar(0, horizon, "makespan")
         model.AddMaxEquality(makespan, list(job_ends.values()))

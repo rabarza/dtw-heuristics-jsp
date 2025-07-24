@@ -1,13 +1,18 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 
 class TaskInput(BaseModel):
     job_id: int
     operation_index: int
     machine_id: int
-    processing_time: float  # en horas
-    setup_time: Optional[float] = None  # en horas, opcional
+    processing_time: float
+    setup_time: Optional[float] = None
+
+
+class FixedStart(BaseModel):
+    operation_index: int
+    start_time_fixed: float
 
 
 class SolveRequest(BaseModel):
@@ -19,6 +24,7 @@ class SolveRequest(BaseModel):
     use_setup_times: bool = False
     max_time_stage1: Optional[int] = None
     max_time_stage2: Optional[int] = None
+    fixed_starts: Optional[Dict[int, List[FixedStart]]] = None
 
 
 class TaskOutput(BaseModel):
