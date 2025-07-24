@@ -38,7 +38,7 @@ def _build_output(schedule_df_human):
 
 @router.post("/solve", response_model=SolveResponse)
 def solve_schedule(req: SolveRequest):
-    data = [t.model_dump() for t in req.tasks]
+    data = [t.model_dump() for t in req.operations]
     df = pd.DataFrame(data)
     # Determinar el tiempo máximo a usar
     max_time = req.max_time_stage1 if req.max_time_stage1 is not None else req.max_time
@@ -66,7 +66,7 @@ def solve_schedule(req: SolveRequest):
 
 @router.post("/solve_two_stage", response_model=SolveResponse)
 def solve_schedule_two_stage(req: SolveRequest):
-    data = [t.model_dump() for t in req.tasks]
+    data = [t.model_dump() for t in req.operations]
     df = pd.DataFrame(data)
     schedule_df = solve_jobshop_two_stage(
         df,

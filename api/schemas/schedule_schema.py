@@ -16,7 +16,7 @@ class FixedStart(BaseModel):
 
 
 class SolveRequest(BaseModel):
-    tasks: List[TaskInput]
+    operations: List[TaskInput]
     H_daily_hours: int = 8
     enforce_daily_limit: bool = True
     time_scale: int = 60
