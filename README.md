@@ -67,7 +67,7 @@ Ambos endpoints comparten el mismo esquema de entrada y salida.
 
 Ejemplo mínimo:
 
-````json
+```json
 {
   "operations": [
     { "job_id": 1, "operation_index": 0, "machine_id": 1, "processing_time": 2.5 },
@@ -79,8 +79,7 @@ Ejemplo mínimo:
   "max_time": 100,
   "use_setup_times": false
 }
-``;
-
+```
 Ejemplo con setups y `fixed_starts`:
 
 ```json
@@ -100,7 +99,7 @@ Ejemplo con setups y `fixed_starts`:
     "1": [{ "operation_index": 0, "start_time_fixed": 0.0 }]
   }
 }
-````
+```
 
 ### Response (salida)
 
