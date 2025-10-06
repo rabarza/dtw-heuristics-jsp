@@ -1,4 +1,4 @@
-### DTW-Heuristics-Faret-JSP
+### Job Shop Scheduling API
 
 Proyecto para resolver Job Shop Scheduling (JSP) con FastAPI y OR-Tools (CP-SAT), incluyendo:
 
