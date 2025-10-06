@@ -55,6 +55,7 @@ $$S_{j'k'} \ge C_{jk} - M_{\text{big}} \cdot Y_{jk,j'k'}^m - M_{\text{big}} \cdo
 $$S_{jk} \ge C_{j'k'} - M_{\text{big}} \cdot (1 - Y_{jk,j'k'}^m) - M_{\text{big}} \cdot (2 - x_{jk}^m - x_{j'k'}^m).$$
 
 Con 
+
 $$M_{\text{big}} = \sum_{j \in J}\sum_{k \in O_j}\max_{m \in \mathcal{M}_{jk}} p_{jk}^m$$
 
 Estas restricciones se activan solo si ambas operaciones usan la misma máquina $m$.
